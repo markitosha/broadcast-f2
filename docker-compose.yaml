@@ -1,0 +1,66 @@
+version: '3.5'
+services:
+  migration:
+    build: .
+    image: broadcast_django
+    env_file:
+      - .env
+    command: python manage.py migrate --noinput
+    volumes:
+      - ./back:/code
+    networks:
+      - broadcast
+
+  backend:
+    image: broadcast_django
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=amqp://broadcast:broadcast@rabbit:5672
+    command: python manage.py runserver 0.0.0.0:5000
+    volumes:
+      - ./back:/code
+      - ./front/build:/var/www/broadcast/static
+    ports:
+      - "5000:5000"
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 100000
+        hard: 100000
+    depends_on:
+      - migration
+    networks:
+      - broadcast
+
+  rabbit:
+    restart: unless-stopped
+    image: rabbitmq:latest
+    hostname: rabbit
+    command: rabbitmq-server
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - broadcast
+
+  celery:
+    image: broadcast_django
+    command: celery -A broadcast worker --loglevel=debug
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=amqp://broadcast:broadcast@rabbit:5672
+      - SOCKET_PROXY_URL=http://backend:5000/
+    depends_on:
+      - rabbit
+      - migration
+      - backend
+    volumes:
+      - ./back:/code
+    networks:
+      - broadcast
+
+networks:
+  broadcast:
+    external: false

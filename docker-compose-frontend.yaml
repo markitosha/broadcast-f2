@@ -1,0 +1,16 @@
+version: '3.5'
+services:
+  frontend:
+    build:
+      context: ./
+      dockerfile: ./front/Dockerfile
+    restart: unless-stopped
+    image: broadcast_frontend
+    environment:
+#      - REACT_APP_API=https://broadcast.rakhmatull.in:8443
+      - REACT_APP_API=https://bcs-nutcracker.ru:8443
+#      - REACT_APP_SOCKET=wss://broadcast.rakhmatull.in:8443
+      - REACT_APP_SOCKET=wss://bcs-nutcracker.ru:8443
+    command: serve /code/build -s -l 8888
+    ports:
+      - "8888:8888"
